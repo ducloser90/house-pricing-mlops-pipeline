@@ -1,13 +1,27 @@
 import pandas as pd
-from src.feature_engineering import FeatureEngineer, LogTransformation, MinMaxScaling, OneHotEncoding, StandardScaling
+from src.feature_engineering import (
+    FeatureEngineer,
+    LogTransformation,
+    MinMaxScaling,
+    OneHotEncoding,
+    StandardScaling,
+    ColumnDropping,
+    OrdinalEncoding,
+)
 from zenml import step
 
 
 @step(enable_cache=False)
-def feature_engineering_step(df: pd.DataFrame, strategy: str = "log", features: list = None) -> pd.DataFrame:
+def feature_engineering_step(
+    df: pd.DataFrame,
+    strategy: str = "log",
+    features: list = None,
+    mapping: dict = None,
+) -> pd.DataFrame:
 
     if features is None:
-        features = []  
+        features = []
+
     if strategy == "log":
         engineer = FeatureEngineer(LogTransformation(features))
     elif strategy == "standard_scaling":
@@ -16,6 +30,13 @@ def feature_engineering_step(df: pd.DataFrame, strategy: str = "log", features: 
         engineer = FeatureEngineer(MinMaxScaling(features))
     elif strategy == "onehot_encoding":
         engineer = FeatureEngineer(OneHotEncoding(features))
+    elif strategy == "column_dropping":
+        engineer = FeatureEngineer(ColumnDropping(features))
+    elif strategy == "ordinal_encoding":
+        # `mapping` is optional; OrdinalEncoding falls back to its
+        # built-in DEFAULT_MAPPING for common Ames-housing quality
+        # columns if none is provided.
+        engineer = FeatureEngineer(OrdinalEncoding(mapping))
     else:
         raise ValueError(f"Unsupported feature engineering strategy: {strategy}")
 
