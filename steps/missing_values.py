@@ -3,7 +3,7 @@ from src.missing_values_handling import DropMissingValuesStrategy,FillMissingVal
 from zenml import step
 
 
-@step
+@step(enable_cache=False)
 def handle_missing_values_step(df: pd.DataFrame, strategy: str = "mean") -> pd.DataFrame:
     if strategy == "drop":
         handler = MissingValueHandler(DropMissingValuesStrategy(axis=0))

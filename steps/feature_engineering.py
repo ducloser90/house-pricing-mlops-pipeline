@@ -3,7 +3,7 @@ from src.feature_engineering import FeatureEngineer, LogTransformation, MinMaxSc
 from zenml import step
 
 
-@step
+@step(enable_cache=False)
 def feature_engineering_step(df: pd.DataFrame, strategy: str = "log", features: list = None) -> pd.DataFrame:
 
     if features is None:

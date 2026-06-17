@@ -4,8 +4,8 @@ from src.data_ingestion import DataIngestorFactory
 import os
 
 
-@step
-def data_ingestion(file_path : str) -> pd.DataFrame:
+@step(enable_cache=False)
+def data_ingestion_step(file_path : str) -> pd.DataFrame:
     file_extension = os.path.splitext(file_path)[1]
     data_ingestor= DataIngestorFactory.get_data_ingestor(file_extension=file_extension)
     df = data_ingestor.ingest(file_path=file_path)
