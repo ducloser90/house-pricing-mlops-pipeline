@@ -2,6 +2,7 @@ import logging
 from typing import Annotated
 import mlflow
 import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
@@ -25,10 +26,24 @@ if experiment_tracker:
     step_args["experiment_tracker"] = experiment_tracker.name
 
 
+def _build_estimator(model_type: str):
+    if model_type == "linear_regression":
+        return LinearRegression()
+    elif model_type == "random_forest":
+        return RandomForestRegressor(
+            n_estimators=200,
+            random_state=42,
+            n_jobs=-1,
+        )
+    else:
+        raise ValueError(f"Unsupported model_type: {model_type}")
+
+
 @step(**step_args)
 def model_building_step(
     X_train: pd.DataFrame,
     y_train: pd.Series,
+    model_type: str = "linear_regression",
 ) -> Annotated[
     Pipeline, ArtifactConfig(name="sklearn_pipeline", artifact_type=ArtifactType.MODEL)
 ]:
@@ -44,6 +59,7 @@ def model_building_step(
 
     logging.info(f"Categorical columns: {categorical_cols.tolist()}")
     logging.info(f"Numerical columns: {numerical_cols.tolist()}")
+    logging.info(f"Model type: {model_type}")
 
     transformers = [
         ("num", SimpleImputer(strategy="mean"), numerical_cols),
@@ -59,26 +75,20 @@ def model_building_step(
 
     preprocessor = ColumnTransformer(transformers=transformers)
 
+    estimator = _build_estimator(model_type)
+
     pipeline = Pipeline(
         steps=[
             ("preprocessor", preprocessor),
-            ("model", LinearRegression()),
+            ("model", estimator),
         ]
     )
 
     try:
-        # NOTE: Do NOT call mlflow.set_tracking_uri(...) or
-        # mlflow.sklearn.autolog() manually here. ZenML's MLflow experiment
-        # tracker (configured via the `experiment_tracker` step arg above)
-        # already opens and manages an MLflow run scoped to this step,
-        # using the tracking URI configured on the active stack. Calling
-        # these manually points to a different/conflicting tracking store
-        # and causes "Run not found" errors when ZenML tries to terminate
-        # its own run afterward.
         if experiment_tracker:
             mlflow.sklearn.autolog()
 
-        logging.info("Building and training the Linear Regression model.")
+        logging.info(f"Building and training the {model_type} model.")
         pipeline.fit(X_train, y_train)
         logging.info("Model training completed.")
 
