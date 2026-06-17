@@ -1,2 +1,15 @@
+# Virtual environment
 myenv/
+
+# Mac system file
+.DS_Store
+
+# Python cache files
+__pycache__/
+*.pyc
+**/__pycache__/
+
+# Data
+data/
+extracted_data/
 
