@@ -8,15 +8,53 @@ from steps.outliers import outlier_detection_step
 from zenml import Model, pipeline
 
 
-@pipeline(model=Model(name="prices_predictor",),)
-def ml_pipeline():
-    raw_data = data_ingestion_step(file_path="/Users/m1/Desktop/prices-predictor-system/data/archive.zip")
+@pipeline(model=Model(name="prices_predictor"))
+def ml_pipeline(model_type: str = "linear_regression"):
+    raw_data = data_ingestion_step(
+        file_path="/Users/m1/Desktop/prices-predictor-system/data/archive.zip"
+    )
+
     filled_data = handle_missing_values_step(raw_data)
-    engineered_data = feature_engineering_step(filled_data,strategy="log",features=["Gr Liv Area", "SalePrice"],)
-    clean_data = outlier_detection_step(engineered_data,column_name="SalePrice",)
-    X_train, X_test, y_train, y_test = data_splitter_step(clean_data,target_column="SalePrice",)
-    model = model_building_step(X_train=X_train,y_train=y_train,)
-    evaluation_metrics, mse = model_evaluator_step(trained_model=model,X_test=X_test,y_test=y_test,)
+
+    id_dropped_data = feature_engineering_step(
+        filled_data,
+        strategy="column_dropping",
+        features=["Order", "PID"],
+    )
+
+    ordinal_encoded_data = feature_engineering_step(
+        id_dropped_data,
+        strategy="ordinal_encoding",
+    )
+
+    engineered_data = feature_engineering_step(
+        ordinal_encoded_data,
+        strategy="log",
+        features=["Gr Liv Area", "SalePrice"],
+    )
+
+    clean_data = outlier_detection_step(
+        engineered_data,
+        column_name="SalePrice",
+    )
+
+    X_train, X_test, y_train, y_test = data_splitter_step(
+        clean_data,
+        target_column="SalePrice",
+    )
+
+    model = model_building_step(
+        X_train=X_train,
+        y_train=y_train,
+        model_type=model_type,
+    )
+
+    evaluation_metrics, mse = model_evaluator_step(
+        trained_model=model,
+        X_test=X_test,
+        y_test=y_test,
+    )
+
     return model
 
 
