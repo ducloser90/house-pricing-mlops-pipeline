@@ -59,4 +59,4 @@ def ml_pipeline(model_type: str = "linear_regression"):
 
 
 if __name__ == "__main__":
-    run = ml_pipeline()
+    run = ml_pipeline(model_type="random_forest")
