@@ -1,3 +1,4 @@
+from typing import Optional
 import pandas as pd
 from src.feature_engineering import (
     FeatureEngineer,
@@ -15,8 +16,8 @@ from zenml import step
 def feature_engineering_step(
     df: pd.DataFrame,
     strategy: str = "log",
-    features: list = None,
-    mapping: dict = None,
+    features: Optional[list] = None,
+    mapping: Optional[dict] = None,
 ) -> pd.DataFrame:
 
     if features is None:
@@ -33,9 +34,6 @@ def feature_engineering_step(
     elif strategy == "column_dropping":
         engineer = FeatureEngineer(ColumnDropping(features))
     elif strategy == "ordinal_encoding":
-        # `mapping` is optional; OrdinalEncoding falls back to its
-        # built-in DEFAULT_MAPPING for common Ames-housing quality
-        # columns if none is provided.
         engineer = FeatureEngineer(OrdinalEncoding(mapping))
     else:
         raise ValueError(f"Unsupported feature engineering strategy: {strategy}")
