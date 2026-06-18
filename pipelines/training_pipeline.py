@@ -9,22 +9,34 @@ from zenml import Model, pipeline
 
 
 @pipeline(model=Model(name="prices_predictor"))
-def ml_pipeline(model_type: str = "linear_regression"):
+def ml_pipeline(
+    model_type: str = "linear_regression",
+    tune_hyperparameters: bool = False,
+    n_trials: int = 30,
+    cv_folds: int = 5,
+):
     raw_data = data_ingestion_step(
         file_path="/Users/m1/Desktop/prices-predictor-system/data/archive.zip"
     )
 
     filled_data = handle_missing_values_step(raw_data)
 
+    # Drop row/parcel identifiers — they carry no predictive signal and
+    # only add noise if left in as numerical features.
     id_dropped_data = feature_engineering_step(
         filled_data,
         strategy="column_dropping",
         features=["Order", "PID"],
     )
 
+    # Ordinally encode quality/condition columns (Exter Qual, Kitchen Qual,
+    # Bsmt Qual, etc.) so their natural ordering (Ex > Gd > TA > Fa > Po) is
+    # preserved as a single numeric column instead of being flattened into
+    # independent one-hot dummies.
     ordinal_encoded_data = feature_engineering_step(
         id_dropped_data,
         strategy="ordinal_encoding",
+        # mapping=None -> uses OrdinalEncoding.DEFAULT_MAPPING
     )
 
     engineered_data = feature_engineering_step(
@@ -47,6 +59,9 @@ def ml_pipeline(model_type: str = "linear_regression"):
         X_train=X_train,
         y_train=y_train,
         model_type=model_type,
+        tune_hyperparameters=tune_hyperparameters,
+        n_trials=n_trials,
+        cv_folds=cv_folds,
     )
 
     evaluation_metrics, mse = model_evaluator_step(
@@ -59,4 +74,4 @@ def ml_pipeline(model_type: str = "linear_regression"):
 
 
 if __name__ == "__main__":
-    run = ml_pipeline(model_type="random_forest")
+    run = ml_pipeline(model_type="xgboost")
