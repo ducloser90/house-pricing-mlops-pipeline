@@ -74,4 +74,4 @@ def ml_pipeline(
 
 
 if __name__ == "__main__":
-    run = ml_pipeline(model_type="xgboost")
+    run = ml_pipeline(model_type="xgboost", tune_hyperparameters=True, n_trials=50, cv_folds=5)
