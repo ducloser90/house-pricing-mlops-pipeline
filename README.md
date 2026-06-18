@@ -167,6 +167,46 @@ model in ZenML's model registry, with the trained `sklearn.pipeline.Pipeline`
 stored as an artifact named `sklearn_pipeline`. This is what the deployment
 API loads — no manual export step is needed.
 
+### 2.5 Results
+
+Metrics below are on the held-out test split (`Mean Squared Error` and
+`R-Squared`, evaluated on log-transformed `SalePrice`, lower MSE / higher
+R² is better). Each row reflects one concrete change applied on top of the
+previous row's pipeline:
+
+| Configuration                                                    | MSE     | R²     |
+|---------------------------------------------------------------------|---------|--------|
+| Linear Regression (baseline: `Order`/`PID` included as features, quality columns one-hot encoded) | 0.0594  | 0.572  |
+| Linear Regression + ID dropping + ordinal encoding of quality columns | 0.0189  | 0.864  |
+| Random Forest (same engineered features, default params)             | 0.0154  | 0.889  |
+| XGBoost (same engineered features, default params)                   | 0.0125  | 0.910  |
+| XGBoost + Optuna tuning (50 trials, 5-fold CV on train set only)      | 0.0107  | 0.923  |
+
+Takeaways:
+
+- The single biggest improvement came from feature engineering, not model
+  choice: dropping row-identifier columns (`Order`, `PID`) and ordinally
+  encoding quality/condition columns (e.g. `Exter Qual`: `Po < Fa < TA <
+  Gd < Ex`) instead of one-hot encoding them moved R² from 0.572 to 0.864
+  on the same Linear Regression model.
+- Switching to tree-based models (Random Forest, then XGBoost) gave
+  smaller, incremental gains on top of that — expected, since tree models
+  don't need the ordinal structure to be explicit, but still benefit from
+  the cleaner feature set and from being able to capture non-linear
+  interactions (e.g. `Overall Qual` mattering more when `Gr Liv Area` is
+  large) that Linear Regression can't.
+- Hyperparameter tuning via Optuna gave the smallest, but still
+  meaningful, final gain (0.910 → 0.923), and used cross-validation on the
+  training set only, so this gain should generalize rather than being an
+  artifact of tuning against the test set.
+- Best parameters found by Optuna for XGBoost (50 trials, 5-fold CV):
+  `n_estimators=750`, `max_depth=5`, `learning_rate≈0.029`,
+  `subsample≈0.51`, `colsample_bytree≈0.54`, `reg_alpha≈0.018`,
+  `reg_lambda≈0.0018`. The relatively shallow depth and slow learning
+  rate, combined with aggressive subsampling, suggest Optuna converged on
+  a conservative, regularized configuration appropriate for a training
+  set of only ~2,300 rows.
+
 ## 3. Deployment (real-time inference API)
 
 The `deployment/` app exposes a FastAPI server that loads the latest
